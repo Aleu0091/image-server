@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Image Uploader</title>
+    </head>
+    <body>
+        <h1>Image Uploader</h1>
+
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <label for="file">Select an image to upload:</label>
+            <input type="file" name="file" id="file" accept="image/*" />
+            <br />
+            <input type="submit" value="Upload" />
+        </form>
+
+        <div id="result"></div>
+
+        <script>
+            document
+                .querySelector("form")
+                .addEventListener("submit", async function (event) {
+                    event.preventDefault();
+
+                    const formData = new FormData(this);
+
+                    try {
+                        const response = await fetch("/upload", {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        const data = await response.json();
+
+                        if (data.error) {
+                            alert("Error: " + data.error);
+                        } else {
+                            const resultDiv = document.getElementById("result");
+                            resultDiv.innerHTML =
+                                "<p>Image uploaded successfully!</p>";
+                            resultDiv.innerHTML +=
+                                '<p>Image URL: <a href="' +
+                                data.file_url +
+                                '" target="_blank">' +
+                                data.file_url +
+                                "</a></p>";
+                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                });
+        </script>
+    </body>
+</html>
