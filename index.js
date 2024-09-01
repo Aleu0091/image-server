@@ -1,14 +1,34 @@
-const express = require("express");
-const multer = require("multer");
-const path = require("path");
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-// 이미지 업로드를 처리할 미들웨어 설정
+const uploadLimit = 5 * 1024 * 1024;
+
+const getTimeUntilMidnight = () => {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+    return midnight - now;
+};
+
+const uploadLimiter = rateLimit({
+    windowMs: getTimeUntilMidnight(),
+    max: 20, 
+    message: { error: 'You have exceeded the 20 uploads per day limit!' },
+    handler: (req, res, next, options) => {
+        if (options.current === 1) {
+            options.windowMs = getTimeUntilMidnight(); 
+        }
+        res.status(options.statusCode).json(options.message);
+    }
+});
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "uploads/");
+        cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
@@ -16,29 +36,27 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage });
-
-// 정적 파일 제공 (업로드된 이미지를 클라이언트에 제공)
-app.use("/uploads", express.static("uploads"));
-
-// 루트 경로에 HTML 폼을 제공
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+const upload = multer({
+    storage,
+    limits: { fileSize: uploadLimit }, 
 });
 
-// 이미지 업로드를 처리하는 라우트
-app.post("/upload", upload.single("file"), (req, res) => {
+
+app.use('/uploads', express.static('uploads'));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.post('/upload', uploadLimiter, upload.single('file'), (req, res) => {
     if (!req.file) {
-        return res.json({ error: "No file uploaded" });
+        return res.json({ error: 'No file uploaded' });
     }
 
-    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
-        req.file.filename
-    }`;
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     res.json({ file_url: fileUrl });
 });
 
-// 서버 시작
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
