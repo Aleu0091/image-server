@@ -1,1 +1,1 @@
-Create uploads folder
+https://hosting.aleu.xyz
